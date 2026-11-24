@@ -1,27 +1,80 @@
-import { Link } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSignIn } from '@clerk/expo';
+import { useRouter, type Href } from 'expo-router';
+import { useState } from 'react';
 
-import { useAuth } from '@/features/auth/auth-context';
+import { AuthScreen, Field, LinkText, PrimaryButton } from '@/components/auth-form';
 
 export default function SignInScreen() {
-  const { signIn } = useAuth();
+  const { signIn, errors, fetchStatus } = useSignIn();
+  const router = useRouter();
+  const [emailAddress, setEmailAddress] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const busy = fetchStatus === 'fetching';
+
+  const finalize = () =>
+    signIn.finalize({
+      navigate: ({ session, decorateUrl }) => {
+        if (session?.currentTask) return;
+        router.replace(decorateUrl('/') as Href);
+      },
+    });
+
+  const handleSubmit = async () => {
+    const { error } = await signIn.password({ emailAddress, password });
+    if (error) return;
+    if (signIn.status === 'complete') await finalize();
+  };
+
+  const handleVerify = async () => {
+    const { error } = await signIn.mfa.verifyEmailCode({ code });
+    if (error) return;
+    if (signIn.status === 'complete') await finalize();
+  };
+
+  // New-device verification (Device Trust is on by default in Clerk).
+  if (signIn.status === 'needs_client_trust') {
+    return (
+      <AuthScreen title="Verify your device">
+        <Field
+          value={code}
+          onChangeText={setCode}
+          keyboardType="number-pad"
+          placeholder="Verification code"
+        />
+        <PrimaryButton title="Verify" onPress={handleVerify} loading={busy} disabled={!code} />
+        <LinkText title="Send a new code" onPress={() => signIn.mfa.sendEmailCode()} />
+        <LinkText title="Start over" onPress={() => signIn.reset()} />
+      </AuthScreen>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-white dark:bg-brand-bg">
-      <SafeAreaView style={{ flex: 1 }}>
-        <View className="flex-1 justify-center gap-4 p-4">
-          <Text className="text-3xl font-semibold text-black dark:text-brand-text-primary">
-            Sign in
-          </Text>
-          {/* TODO: replace with real API call; signIn expects the session token */}
-          <Pressable onPress={() => signIn('dev-token')}>
-            <Text className="text-brand-blue">Continue (dev)</Text>
-          </Pressable>
-          <Link href="/sign-up">
-            <Text className="text-brand-blue">Create an account</Text>
-          </Link>
-        </View>
-      </SafeAreaView>
-    </View>
+    <AuthScreen title="Sign in">
+      <Field
+        value={emailAddress}
+        onChangeText={setEmailAddress}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        placeholder="Email"
+        error={errors.fields.identifier?.message}
+      />
+      <Field
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoComplete="current-password"
+        placeholder="Password"
+        error={errors.fields.password?.message}
+      />
+      <PrimaryButton
+        title="Continue"
+        onPress={handleSubmit}
+        loading={busy}
+        disabled={!emailAddress || !password}
+      />
+      <LinkText title="Create an account" onPress={() => router.push('/sign-up')} />
+    </AuthScreen>
   );
 }
