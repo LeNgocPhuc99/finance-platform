@@ -8,6 +8,7 @@
     "scheme": "welth",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.welth.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
@@ -18,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.welth"
+      "package": "com.welth.app"
     },
     "web": {
       "output": "server",
@@ -34,7 +35,8 @@
           "imageWidth": 76
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
