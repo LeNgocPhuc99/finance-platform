@@ -1,80 +1,151 @@
-import { useSignIn } from '@clerk/expo';
-import { useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useSignIn } from "@clerk/expo";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useRouter, type Href } from "expo-router";
+import { Controller, useForm } from "react-hook-form";
+import { Text, View } from "react-native";
 
-import { AuthScreen, Field, LinkText, PrimaryButton } from '@/components/auth-form';
+import {
+  AuthScreen,
+  Field,
+  FieldError,
+  LinkText,
+  PrimaryButton,
+} from "@/components/auth-form";
+import {
+  codeSchema,
+  signInSchema,
+  type CodeFormSchema,
+  type SignInFormSchema,
+} from "@/lib/schemas/auth";
 
 export default function SignInScreen() {
   const { signIn, errors, fetchStatus } = useSignIn();
   const router = useRouter();
-  const [emailAddress, setEmailAddress] = useState('');
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
-  const busy = fetchStatus === 'fetching';
+  const busy = fetchStatus === "fetching";
+
+  const signInForm = useForm<SignInFormSchema>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: "", password: "" },
+    mode: "onBlur",
+  });
+
+  const codeForm = useForm<CodeFormSchema>({
+    resolver: zodResolver(codeSchema),
+    defaultValues: { code: "" },
+    mode: "onBlur",
+  });
 
   const finalize = () =>
     signIn.finalize({
       navigate: ({ session, decorateUrl }) => {
         if (session?.currentTask) return;
-        router.replace(decorateUrl('/') as Href);
+        router.replace(decorateUrl("/") as Href);
       },
     });
 
-  const handleSubmit = async () => {
-    const { error } = await signIn.password({ emailAddress, password });
+  const onSubmit = async ({ email, password }: SignInFormSchema) => {
+    const { error } = await signIn.password({ emailAddress: email, password });
     if (error) return;
-    if (signIn.status === 'complete') await finalize();
+
+    if (signIn.status === "complete") {
+      await finalize();
+    } else if (signIn.status === "needs_client_trust") {
+      // New device: Clerk requires an email code before the session is created.
+      await signIn.mfa.sendEmailCode();
+    }
   };
 
-  const handleVerify = async () => {
+  const onVerify = async ({ code }: CodeFormSchema) => {
     const { error } = await signIn.mfa.verifyEmailCode({ code });
     if (error) return;
-    if (signIn.status === 'complete') await finalize();
+    if (signIn.status === "complete") await finalize();
   };
 
-  // New-device verification (Device Trust is on by default in Clerk).
-  if (signIn.status === 'needs_client_trust') {
+  if (signIn.status === "needs_client_trust") {
     return (
-      <AuthScreen title="Verify your device">
-        <Field
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          placeholder="Verification code"
+      <AuthScreen title="Verify your account">
+        <Controller
+          control={codeForm.control}
+          name="code"
+          render={({ field, fieldState }) => (
+            <Field
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="Enter verification code"
+              error={fieldState.error?.message}
+            />
+          )}
         />
-        <PrimaryButton title="Verify" onPress={handleVerify} loading={busy} disabled={!code} />
-        <LinkText title="Send a new code" onPress={() => signIn.mfa.sendEmailCode()} />
+        <FieldError message={errors.fields.code?.message} />
+        <PrimaryButton
+          title="Verify"
+          onPress={codeForm.handleSubmit(onVerify)}
+          loading={busy}
+        />
+        <LinkText
+          title="I need a new code"
+          onPress={() => signIn.mfa.sendEmailCode()}
+        />
         <LinkText title="Start over" onPress={() => signIn.reset()} />
       </AuthScreen>
     );
   }
 
   return (
-    <AuthScreen title="Sign in">
-      <Field
-        value={emailAddress}
-        onChangeText={setEmailAddress}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        placeholder="Email"
-        error={errors.fields.identifier?.message}
+    <AuthScreen title="Welcome back" subtitle="Sign in to your account">
+      <Controller
+        control={signInForm.control}
+        name="email"
+        render={({ field, fieldState }) => (
+          <Field
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            placeholder="Email Address"
+            error={fieldState.error?.message}
+          />
+        )}
       />
-      <Field
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoComplete="current-password"
-        placeholder="Password"
-        error={errors.fields.password?.message}
+      <FieldError message={errors.fields.identifier?.message} />
+
+      <Controller
+        control={signInForm.control}
+        name="password"
+        render={({ field, fieldState }) => (
+          <Field
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            secureTextEntry
+            autoComplete="current-password"
+            placeholder="Password"
+            error={fieldState.error?.message}
+          />
+        )}
       />
+      <FieldError message={errors.fields.password?.message} />
+
       <PrimaryButton
-        title="Continue"
-        onPress={handleSubmit}
+        title="Sign In"
+        onPress={signInForm.handleSubmit(onSubmit)}
         loading={busy}
-        disabled={!emailAddress || !password}
       />
-      <LinkText title="Create an account" onPress={() => router.push('/sign-up')} />
+
+      <View className="flex-row justify-center">
+        <Text className="text-brand-text-muted">
+          Don&apos;t have an account?{" "}
+        </Text>
+        <Link href="/sign-up" replace>
+          <Text className="font-semibold text-brand-blue">Sign Up</Text>
+        </Link>
+      </View>
     </AuthScreen>
   );
 }
