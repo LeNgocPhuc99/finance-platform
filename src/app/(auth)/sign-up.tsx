@@ -1,18 +1,20 @@
 import { Link } from 'expo-router';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 
 export default function SignUpScreen() {
   return (
-    <ThemedView style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1, padding: 16, gap: 16, justifyContent: 'center' }}>
-        <ThemedText type="subtitle">Sign up</ThemedText>
-        <Link href="/sign-in">
-          <ThemedText type="link">Back to sign in</ThemedText>
-        </Link>
+    <View className="flex-1 bg-white dark:bg-brand-bg">
+      <SafeAreaView style={{ flex: 1 }}>
+        <View className="flex-1 justify-center gap-4 p-4">
+          <Text className="text-3xl font-semibold text-black dark:text-brand-text-primary">
+            Sign up
+          </Text>
+          <Link href="/sign-in">
+            <Text className="text-brand-blue">Back to sign in</Text>
+          </Link>
+        </View>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }

@@ -1,20 +1,15 @@
-import { Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Screen } from '@/components/screen';
 import { useAuth } from '@/features/auth/auth-context';
 
 export default function ProfileScreen() {
   const { signOut } = useAuth();
   return (
-    <ThemedView style={{ flex: 1 }}>
-      <SafeAreaView edges={['top']} style={{ flex: 1, padding: 16, gap: 16 }}>
-        <ThemedText type="subtitle">Profile</ThemedText>
-        <Pressable onPress={signOut}>
-          <ThemedText type="link">Sign out</ThemedText>
-        </Pressable>
-      </SafeAreaView>
-    </ThemedView>
+    <Screen title="Profile">
+      <Pressable onPress={signOut}>
+        <Text className="text-brand-blue">Sign out</Text>
+      </Pressable>
+    </Screen>
   );
 }
