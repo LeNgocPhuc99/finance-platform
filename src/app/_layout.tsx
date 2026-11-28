@@ -7,6 +7,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { SupabaseProvider } from '@/providers/supabase-provider';
+
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 
 if (!publishableKey) {
@@ -42,9 +44,11 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <RootNavigator />
-      </ThemeProvider>
+      <SupabaseProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <RootNavigator />
+        </ThemeProvider>
+      </SupabaseProvider>
     </ClerkProvider>
   );
 }
